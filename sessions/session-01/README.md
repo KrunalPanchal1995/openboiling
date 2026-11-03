@@ -22,7 +22,7 @@
 You put a pot of water on the stove. For a few minutes it just gets warmer. Then bubbles appear at the bottom and the temperature stops rising, although the heater still pours energy in. Where does the energy go? And why do bubbles start on the hot surface, not in the middle of the water? (General education only: this is not advice for operating real heating equipment.)
 
 ## B. Concept and theory
-Heat is energy, measured in joules (J); power is energy per second, in watts (W). Warming m kilograms of water by a temperature difference dT needs m cp dT, where cp = 4186 J/(kg K) is how much energy 1 kg needs for 1 K. At the boiling point (100 C at normal air pressure) extra energy L = 2.257 million J per kilogram is needed to turn the water into steam; the water stays at 100 C while this happens. Bubbles form on the heater surface because the water touching the metal is hotter than the water further away. Now imagine holding the metal at dT kelvin above the boiling point and measuring the heat flux q, in watts per square metre, leaving it. The boiling curve plots q against dT and has four stages: natural convection (no bubbles), nucleate boiling (bubbles, very steep rise), the critical heat flux followed by transition boiling (flux falls), and film boiling (a vapour blanket insulates the surface).
+Heat is energy, measured in joules (J); power is energy per second, in watts (W). Warming m kilograms of water by a temperature difference dT needs m cp dT, where cp = 4186 J/(kg K) is how much energy 1 kg needs for 1 K. At the boiling point (100 C at normal air pressure) extra energy L = 2.257 million J per kilogram is needed to turn the water into steam; the water stays at 100 C while this happens. Bubbles form on the heater surface because the water touching the metal is hotter than the water further away. Now imagine holding the metal at dT kelvin above the boiling point and measuring the heat flux q, in watts per square metre, leaving it. The boiling curve plots q against dT and has four stages: natural convection (no bubbles), nucleate boiling (bubbles, very steep rise up to a peak called the critical heat flux), transition boiling (the flux falls after the peak), and film boiling (a vapour blanket insulates the surface).
 
 | Symbol | Meaning | Unit |
 |---|---|---|
@@ -63,7 +63,7 @@ Run the lesson (`python start.py 1`), then open the live app: [Session 1: heat t
 **Challenge.** Get the water boiling within 3 minutes of heating and keep heating until at least 50 g has boiled away.
 
 ## E. Worked example and experiment
-**Problem.** 1 kg of water at 20 C on a 2000 W heater with efficiency 0.85. When does it boil, and how much water has boiled away 5 minutes later?
+**Problem.** 1 kg of water at 20 C on a 2000 W heater with efficiency 0.85. When does it start to boil, and how much water has boiled away 5 minutes after boiling starts?
 
 1. Energy to warm it: m cp dT = 1 * 4186 * 80 = 334 880 J.
 2. Useful power: 0.85 * 2000 = 1700 W.
@@ -71,7 +71,7 @@ Run the lesson (`python start.py 1`), then open the live app: [Session 1: heat t
 4. During the next 300 s the energy is 1700 * 300 = 510 000 J, all of it making steam.
 5. Mass boiled away: 510 000 / 2.257e6 = 0.226 kg.
 
-**Answer.** It boils after 197 s; 5 minutes later it is still at 100 C and 226 g (22.6 percent) has boiled away.
+**Answer.** It boils after 197 s; 5 minutes after boiling starts it is still at 100 C and 226 g (22.6 percent) has boiled away.
 
 **Experiment.** Heat 1 litre of water in a kettle or pot on a plate with a known power (read it from the label), time how long until bubbles appear all over the bottom, and weigh the pot before and after 5 minutes of boiling. You should find a time within about 20 percent of the model and a mass loss close to the model. Differences: the real heater loses energy to the room and the pot, so the real efficiency is lower than 0.85; small air bubbles appear well before 100 C because dissolved air comes out of the water, which the model ignores.
 
@@ -91,6 +91,7 @@ Think about what leaves the pot.
 It goes into the latent heat: the energy that turns liquid water into steam. About 2.257 million joules are needed for each kilogram, and the steam carries that energy away. The temperature of boiling water cannot rise at fixed pressure, so all the additional energy becomes vapour, at a rate of eta P / L kilograms per second.
 
 </details>
+
 **Question type B: Numerical.** 1.5 kg of water at 20 C on an 1800 W heater (efficiency 0.85). How long until it boils, and how much boils away in the next 2 minutes?
 
 <details>
@@ -106,6 +107,7 @@ Use t = m cp dT / (eta P), then the mass rate eta P / L.
 Time = 1.5 * 4186 * 80 / (0.85 * 1800) = 502 320 / 1530 = 328 s (about 5.5 minutes). Then boiled mass = 0.85 * 1800 * 120 / 2.257e6 = 183 600 / 2.257e6 = 0.081 kg = 81 g. Sanity check: 2 minutes of boiling removes only about 5 percent of the water, much less than the 328 s of warming would suggest, because L is 540 times cp.
 
 </details>
+
 **Question type C: Graph and simulation interpretation.** On the boiling curve, compare the heat flux of a surface 10 K above boiling, one 60 K above and one 200 K above. Name the stage of each. What is surprising?
 
 <details>
@@ -121,6 +123,7 @@ Use the readout of the boiling-curve view, or the numbers printed by lesson.py.
 10 K: nucleate boiling, about 41 kW/m2. 60 K: transition boiling, about 312 kW/m2 (the largest of the three, but past the peak). 200 K: film boiling, about 38 kW/m2. It is surprising that the surface at 200 K, 190 K hotter, carries about the same heat flux as the one at 10 K: the vapour blanket insulates it. The curve is not monotonic.
 
 </details>
+
 **Question type D: Design and optimisation challenge.** Design: choose a heater power so that 1 litre (1 kg) of water boils in 3 minutes from 20 C, then say how much water you lose in 10 minutes if you leave it at that power. Suggest a better way to keep it boiling.
 
 <details>
@@ -145,7 +148,7 @@ Score yourself with [RUBRIC.md](../../RUBRIC.md). Print the [activity sheet](act
 | Water boils because it has been heated for a long time. | It boils when it reaches the boiling temperature; after that more heating makes more steam, not a hotter liquid. |
 | Bubbles that appear well before 100 C mean the water is already boiling. | Those are mostly dissolved air coming out of solution; real boiling bubbles are filled with steam and fill the whole bottom. |
 | A hotter surface always carries more heat into the water. | Past the critical heat flux the vapour blanket makes the flux fall; a very hot surface can transfer less heat than a moderately hot one. |
-| Boiling water at 100 C is the same as steam at 100 C in terms of energy. | Steam holds the extra latent heat, 2.257 million joules per kilogram, more than five times the energy needed to warm the same water from 0 C to 100 C. |
+| Boiling water at 100 C is the same as steam at 100 C in terms of energy. | Steam at 100 C also holds the latent heat: 2.257 million joules per kilogram, more than five times the 0.42 million joules needed to warm 1 kg of water from 0 C to 100 C. |
 
 ## Glossary
 - **specific heat**: energy needed to warm 1 kg of a material by 1 K (4186 J/(kg K) for water)
