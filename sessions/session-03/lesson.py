@@ -327,6 +327,92 @@ def max_safe_power(area_m2, step_w=1000.0, p_max_w=60000.0, **kw):
 
 
 # %% [markdown]
+# ## Step 7: a thick plate, heat flowing through the metal
+# The lumped plate gives one temperature to the whole plate. A thick or poorly conducting
+# plate cannot: heat entering at the back face must be *conducted* to the boiling face, which
+# takes a temperature difference. In steady state that difference is exactly `q L / k`
+# (heat flux times thickness over conductivity). The ratio of the temperature drop inside the
+# plate to the one across the boiling film is the *Biot number* `Bi = h L / k`, where
+# `h = q / dT` is how well the surface hands heat to the water. Lumping is fair for Bi below
+# about 0.1.
+#
+# `simulate_plate` divides the thickness into slices (finite volumes) and steps the heat
+# equation `rho cp dT/dt = k d2T/dx2`: heat `q_in(t)` enters at x = 0, the boiling curve takes
+# `boiling_flux(T at x = L)` out at the surface. Conduction is treated implicitly, so the step
+# is not limited by the slice thickness; the boiling flux is taken at the start of the step,
+# so keep `dt_s` small (checked by halving it).
+
+# %%
+K_PLATE = 400.0         # W/(m K), copper
+RHO_CP = 3.45e6         # J/(m^3 K), copper; C_PLATE is RHO_CP times 5 mm
+
+
+def biot_chf(thickness, k=K_PLATE, surface=1.0):
+    """Biot number h L / k with h = Q_CHF / dT at the critical heat flux (where it matters most)."""
+    return Q_CHF / dt_at_chf(surface) * thickness / k
+
+
+def simulate_plate(q_in, thickness, n=None, t_end=300.0, dt_s=0.002, surface=1.0, k=K_PLATE,
+                   rho_cp=RHO_CP, stop_at_limit=True):
+    """1-D conduction in a plate of the given thickness (m) heated at x = 0 (flux q_in(t), W/m^2),
+    cooled by boiling at x = L, insulated otherwise. Superheats are in K relative to the water.
+
+    Returns dict: t, T_back, T_surface, T_mean, q_in, q_out (arrays), burnout_time (the heated
+    face reaches DT_LIMIT, or None), final profile T (nodes from back to surface), x, and the
+    stored energy (J/m^2) for the energy balance."""
+    if n is None:
+        n = max(10, int(round(thickness / 0.5e-3)))
+    dx = thickness / n
+    c = np.full(n + 1, rho_cp * dx)
+    c[0] *= 0.5
+    c[-1] *= 0.5
+    g = k / dx
+    cond = np.zeros((n + 1, n + 1))
+    for i in range(n):
+        cond[i, i] += g
+        cond[i + 1, i + 1] += g
+        cond[i, i + 1] -= g
+        cond[i + 1, i] -= g
+    a_inv = np.linalg.inv(np.diag(c) + dt_s * cond)
+    steps = int(round(t_end / dt_s))
+    T = np.zeros(n + 1)
+    b = np.zeros(n + 1)
+    tt, tb, ts, tm, qi_l, qo_l = [], [], [], [], [], []
+    burn = None
+    w = np.full(n + 1, dx)
+    w[0] *= 0.5
+    w[-1] *= 0.5
+    for s in range(steps + 1):
+        t = s * dt_s
+        qi, qo = q_in(t), boiling_flux(T[-1], surface)
+        tt.append(t); tb.append(T[0]); ts.append(T[-1]); tm.append(float(w @ T) / thickness)
+        qi_l.append(qi); qo_l.append(qo)
+        if stop_at_limit and T[0] >= DT_LIMIT:
+            burn = t
+            break
+        b[0], b[-1] = qi, -qo
+        T = a_inv @ (c * T + dt_s * b)
+    return {"t": np.array(tt), "T_back": np.array(tb), "T_surface": np.array(ts), "T_mean": np.array(tm),
+            "q_in": np.array(qi_l), "q_out": np.array(qo_l), "burnout_time": burn,
+            "x": np.linspace(0.0, thickness, n + 1), "T": T, "thickness": thickness,
+            "stored": float(np.sum(c * T)), "rho_cp": rho_cp}
+
+
+def plate_energy_balance(run):
+    """Energy in, carried off by boiling and stored in the plate (J/m^2), and the residual.
+    The stored energy is recomputed from the final profile, independently of the time stepping."""
+    e_in = _trapezoid(run["q_in"], run["t"])
+    e_out = _trapezoid(run["q_out"], run["t"])
+    return {"in": e_in, "out": e_out, "stored": run["stored"], "residual": e_in - e_out - run["stored"]}
+
+
+def plate_burnout_time(q_target, thickness, ramp=10.0, **kw):
+    """Burnout time (s) of the 1-D plate for a power step, to compare with `burnout_time` with
+    c_plate = RHO_CP * thickness."""
+    return simulate_plate(step_power(q_target, ramp), thickness, **kw)["burnout_time"]
+
+
+# %% [markdown]
 # ## Step 6: run it and plot
 # Four figures: the boiling curve, the burnout run, the hysteresis loop, and bubble growth.
 
@@ -405,6 +491,35 @@ if __name__ == "__main__":
     for qt in (1.1e6, 1.15e6, 1.3e6, 1.5e6):
         print(f"  {qt / 1e3:6.0f} kW/m2 -> {burnout_time(qt)}")
     print("mini-project: max safe power for 0.04 m2 (W):", max_safe_power(0.04))
+
+    # figure 4: thick plate, temperature profile and burnout time against thickness
+    fig4, ax4 = plt.subplots(1, 2, figsize=(10.5, 4.2))
+    q_ss = 5e5
+    for th, col in ((0.005, "#003f7f"), (0.02, "#c86a00"), (0.05, "#d81b60")):
+        rr = simulate_plate(lambda t: q_ss, th, t_end=150.0, stop_at_limit=False)
+        ax4[0].plot(1e3 * rr["x"], rr["T"], color=col, lw=2,
+                    label=f"{1e3 * th:g} mm: drop {rr['T'][0] - rr['T'][-1]:.2f} K = q L / k")
+    ax4[0].set_xlabel("depth x from the heated back face (mm)")
+    ax4[0].set_ylabel("temperature above the water (K)")
+    ax4[0].set_title(f"Steady profiles at q = {q_ss / 1e3:.0f} kW/m2", fontsize=10)
+    ax4[0].grid(alpha=0.3)
+    ax4[0].legend(fontsize=8)
+    ths = np.array([1, 2, 5, 10, 20, 50]) * 1e-3
+    lum = [burnout_time(1.3e6, c_plate=RHO_CP * th, t_end=400.0) for th in ths]
+    one = [plate_burnout_time(1.3e6, th, t_end=400.0) for th in ths]
+    ax4[1].plot(1e3 * ths, lum, "o--", color="#c86a00", label="lumped plate")
+    ax4[1].plot(1e3 * ths, one, "s-", color="#003f7f", label="1-D conduction (heated face)")
+    ax4[1].set_xscale("log")
+    ax4[1].set_xlabel("plate thickness (mm)")
+    ax4[1].set_ylabel("burnout time after a step to 1.3 MW/m2 (s)")
+    ax4[1].set_title("Lumped burnout time is a few percent late", fontsize=10)
+    ax4[1].grid(alpha=0.3, which="both")
+    ax4[1].legend(fontsize=8)
+    fig4.tight_layout()
+    fig4.savefig(OUT / "thick_plate.png", dpi=120)
+    print("thickness mm, Bi at CHF, lumped burnout, 1-D burnout, difference %:")
+    for th, a, b_ in zip(ths, lum, one):
+        print(f"  {1e3 * th:4.0f}  Bi {biot_chf(th):.3f}  {a:7.2f}  {b_:7.2f}  {100 * (a - b_) / a:5.1f}")
     print("saved figures in", OUT)
 
 # %% [markdown]

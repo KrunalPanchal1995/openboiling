@@ -67,6 +67,23 @@ The first figure shows the plate temperature in time for three power-controlled 
 
 *Left: plate temperature for fluxes below and above the critical heat flux. Right: the hysteresis loop of a power-controlled plate against the temperature-controlled path.*
 
+**A thick plate: heat has to flow through the metal.** The lumped plate gives the whole plate one temperature. A real plate has a temperature profile: heat enters at the back face and must be conducted to the boiling face, which takes a temperature difference. In steady state it is exactly q L / k (flux times thickness over conductivity). `simulate_plate(q_in, thickness)` slices the plate (finite volumes, implicit conduction), applies the heat flux at the back face and the boiling curve at the front face, and the checkpoint confirms the steady difference matches q L / k to better than 1 percent (it is within 0.001 percent): at 500 kW/m2 in copper (k = 400 W/(m K)) a 5 mm plate drops 6.25 K, a 20 mm plate 25 K and a 50 mm plate 62.5 K, on top of the 23.07 K at the boiling surface. The Biot number Bi = h L / k, with h = q / dT at the critical heat flux (36.7 kW/(m2 K)), says when lumping is fair; it should be about 0.1 or less.
+
+| Thickness | Bi at the CHF | Lumped burnout (s) | 1-D burnout (s) | 1-D is earlier by |
+|---|---|---|---|---|
+| 1 mm | 0.09 | 10.49 | 10.47 | 0.2% |
+| 2 mm | 0.18 | 12.29 | 12.25 | 0.4% |
+| 5 mm | 0.46 | 17.59 | 17.37 | 1.3% |
+| 10 mm | 0.92 | 26.26 | 25.53 | 2.8% |
+| 20 mm | 1.83 | 43.54 | 41.64 | 4.3% |
+| 50 mm | 4.58 | 96.78 | 93.11 | 3.8% |
+
+The burnout time is a power step to 1.3 MW/m2 (ramped over 10 s) and burnout means the heated face reaches the 600 K limit; the lumped model uses C = rho cp L for the same thickness. The result is worth thinking about: the burnout *time* differs by only a few percent even at Bi of 4, because most of the time goes into storing heat, which both models count the same. What the lumped model hides is the temperature of the heated face: in the 50 mm plate, at the moment the boiling surface first reaches the superheat of the CHF (30 K, after 29 s), the heated face is already 147 K hotter, at about 177 K. For a real heater the hottest point, not the average, decides whether the metal survives. The numbers do not depend on the time step (0.004 against 0.001 s agree to 0.02 percent) or on the number of slices (10 against 40 within 0.04 percent), and the energy put in equals the energy carried off plus the energy stored to better than 0.01 percent.
+
+![Left: steady temperature profiles in 5, 20 and 50 mm copper plates, with the drop q L / k. Right: burnout time against thickness, lumped against 1-D.](../../docs/figures/s03_thick_plate.png)
+
+*Left: steady temperature profiles in 5, 20 and 50 mm copper plates, with the drop q L / k. Right: burnout time against thickness, lumped against 1-D.*
+
 ## D. Interactive simulation
 Run the lesson (`python start.py 3`), then open the live app: [Session 3: a plate cooled by boiling](https://krunalpanchal1995.github.io/openboiling/session-03/) (or `app.html` in this folder). Raise the heat flux slowly toward 1100 kW/m2 and watch the trace and the boiling-curve view; then step over it and see the runaway. Change the surface factor and the plate thickness and see how the burnout time and steady superheat change.
 

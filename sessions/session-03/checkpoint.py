@@ -74,6 +74,43 @@ def run_checks(L):
     # mini-project helper
     checks.append(("mini-project: 15 kW on 0.04 m2 passes, 16 kW fails (fouled surface)",
                    L.design_check(15000.0, 0.04)["ok"] and not L.design_check(16000.0, 0.04)["ok"]))
+    # ---- thick plate: 1-D conduction against the lumped model -----------------------------------
+    q_ss = 5e5
+    steady = {}
+    for th in (0.005, 0.02, 0.05):
+        rr = L.simulate_plate(lambda t: q_ss, th, t_end=150.0, stop_at_limit=False)
+        steady[th] = rr
+    errs = {th: abs((r_["T"][0] - r_["T"][-1]) - q_ss * th / L.K_PLATE) / (q_ss * th / L.K_PLATE) for th, r_ in steady.items()}
+    checks.append((f"steady temperature difference across the plate is q L / k within 1 percent: 5, 20, 50 mm give {', '.join(f'{100 * v:.4f} %' for v in errs.values())} error (6.25, 25, 62.5 K)",
+                   all(v < 0.01 for v in errs.values())))
+    sup = steady[0.005]["T"][-1]
+    checks.append((f"steady boiling surface superheat equals the lumped steady value {L.steady_superheat(q_ss):.2f} K (got {sup:.2f} K)",
+                   abs(sup - L.steady_superheat(q_ss)) / sup < 0.01))
+    r5 = L.simulate_plate(lambda t: 2e3, 0.005, t_end=17.25, stop_at_limit=False)
+    ex5 = float(L.exact_natural(2e3, 17.25))
+    checks.append((f"natural convection (q = 2 kW/m2, no bubbles): the 5 mm plate's mean superheat after one time constant is {r5['T_mean'][-1]:.4f} K against the exact exponential {ex5:.4f} K, within 1 percent",
+                   abs(r5["T_mean"][-1] - ex5) / ex5 < 0.01))
+    checks.append(("Biot number at the CHF: 0.09 for 1 mm, 0.46 for 5 mm, 1.8 for 20 mm (lumping needs about 0.1 or less)",
+                   abs(L.biot_chf(0.001) - 0.092) < 0.001 and abs(L.biot_chf(0.005) - 0.458) < 0.001 and abs(L.biot_chf(0.02) - 1.833) < 0.001))
+    cmp_ = {}
+    for th in (0.001, 0.005, 0.02):
+        cmp_[th] = (L.burnout_time(1.3e6, c_plate=L.RHO_CP * th, t_end=400.0), L.plate_burnout_time(1.3e6, th, t_end=400.0))
+    d1 = abs(cmp_[0.001][0] - cmp_[0.001][1]) / cmp_[0.001][0]
+    d20 = (cmp_[0.02][0] - cmp_[0.02][1]) / cmp_[0.02][0]
+    checks.append((f"burnout time after a step to 1.3 MW/m2: 1 mm plate agrees with the lumped model to {100 * d1:.1f} %, the 20 mm plate burns out {100 * d20:.1f} % earlier ({cmp_[0.02][1]:.1f} s against {cmp_[0.02][0]:.1f} s)",
+                   d1 < 0.01 and 0.02 < d20 < 0.07))
+    b_a = L.plate_burnout_time(1.3e6, 0.02, dt_s=0.004)
+    b_b = L.plate_burnout_time(1.3e6, 0.02, dt_s=0.001)
+    b_c = L.plate_burnout_time(1.3e6, 0.02, n=10)
+    b_d = L.plate_burnout_time(1.3e6, 0.02, n=40)
+    checks.append((f"result does not depend on the time step (0.004 against 0.001 s: {b_a:.2f}, {b_b:.2f} s) or the number of slices (10 against 40: {b_c:.2f}, {b_d:.2f} s)",
+                   abs(b_a - b_b) / b_b < 1e-3 and abs(b_c - b_d) / b_d < 1e-3))
+    rb = L.simulate_plate(L.step_power(1.3e6, 10.0), 0.02)
+    eb = L.plate_energy_balance(rb)
+    checks.append((f"energy balance of the 1-D plate: in = out + stored within 0.01 percent (residual {abs(eb['residual']) / eb['in'] * 100:.4f} %)",
+                   abs(eb["residual"]) / eb["in"] < 1e-4))
+    checks.append(("the heated face is the hottest point and the surface the coolest at burnout",
+                   rb["T_back"][-1] >= L.DT_LIMIT and rb["T"][0] > rb["T"][1] > rb["T"][-1]))
     return checks
 
 
