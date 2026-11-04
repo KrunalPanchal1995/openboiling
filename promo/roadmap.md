@@ -2,16 +2,6 @@
 
 This is the path, not the code. Each milestone says what you learn, what you build, and how you know it works. Pick one and open a pull request. See [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-## Session 4: Replace the hand-picked curve with correlations
-
-**You will learn:** How Rohsenow, Zuber, Berenson and film-boiling correlations are built from fluid properties, and what pressure does to them.
-
-**You will build:** A boiling curve computed from fluid properties at any pressure.
-
-**Checkpoint (not met by the shipped code):** The critical heat flux at 5 bar absolute is at least 30 percent above the 1 atm value (the shipped curve gives the same 1.1 MW/m2 at any pressure).
-
-**Difficulty:** intermediate
-
 ## Session 5: A spherical bubble in the superheated liquid
 
 **You will learn:** The heat equation in spherical coordinates with a moving boundary, and why curvature adds the factor sqrt(3).

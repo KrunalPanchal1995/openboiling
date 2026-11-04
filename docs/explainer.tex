@@ -10,7 +10,7 @@
 \setlength{\parindent}{0pt}
 \begin{document}
 
-\begin{center}{\LARGE\bfseries openboiling}\\[0.4em]{\large Model boiling and bubble growth on a heated surface, in three sessions.}\\[0.2em]\small PAN IIT OSS explainer \textbullet{} higher secondary to diploma / undergraduate (levels 4-5)\end{center}
+\begin{center}{\LARGE\bfseries openboiling}\\[0.4em]{\large Model boiling and bubble growth on a heated surface, in four sessions.}\\[0.2em]\small PAN IIT OSS explainer \textbullet{} higher secondary to diploma / undergraduate (levels 4-5)\end{center}
 
 \section*{Why this exists}
 A hot surface under water can carry away enormous amounts of heat by boiling, until a limit is crossed and a vapour film suddenly insulates it. This explainer shows the energy balance, the boiling curve and the burnout using only simple equations, so you can build the model yourself.
@@ -18,11 +18,12 @@ A hot surface under water can carry away enormous amounts of heat by boiling, un
 \section*{The end goal}
 Model boiling and bubble growth on a heated surface. The end goal is to model boiling and bubble growth on a heated surface: the boiling curve, the critical heat flux and the growth of a bubble. The same ideas matter in power plants, electronics cooling and the quenching of hot metal, always with large safety margins and real validated data.
 
-\section*{How the three sessions build up}
+\section*{How the four sessions build up}
 \begin{enumerate}[nosep]
 \item \textbf{Session 1: Why a pot of water gets stuck at 100 C} (Level 1, conceptual interactive model, 60 min).
 \item \textbf{Session 2: Energy to boil, heat flux and the limits of a heater} (Level 2, mathematical engineering model, 75 min).
 \item \textbf{Session 3: A heated plate, the burnout and the growing bubble} (Level 3, simulation and validation, 90 min).
+\item \textbf{Session 4: The boiling curve from fluid properties, and what pressure does to it} (Level 3, simulation and validation, 90 min).
 \end{enumerate}
 
 \section{Session 1: Why a pot of water gets stuck at 100 C}
@@ -203,12 +204,80 @@ Apply a heat flux of 600 kW/m2 to the reference plate. Find the steady wall supe
 \item \textbf{Design and optimisation challenge.} Design: a 0.04 m2 heater must be safe on a new and a fouled surface with a 20 percent power overshoot, at most 60 percent of the CHF and at most 25 K superheat. Find the largest safe power on a 1 kW grid. Is 60 percent of the CHF alone sufficient?
 \end{enumerate}
 
+\section{Session 4: The boiling curve from fluid properties, and what pressure does to it}
+
+\subsection*{A. Real-world problem}
+Sessions 2 and 3 used a boiling curve with hand-picked numbers: a CHF of 1.1 MW/m2 at any pressure. But a pressure cooker boils water at 120 C, a boiler at 180 C and a power-station tube at 300 C, and engineers know that the CHF changes with pressure. By how much, and why? And what does it mean for a heater that is safe at one atmosphere when it is put in a vessel at 5 bar? This session builds the boiling curve from the properties of water instead of from chosen numbers. (Simplified teaching model; never use it to design or test real heating or boiler equipment.)
+
+\subsection*{B. Concept and theory}
+Everything in the curve comes from the properties of saturated water at the working pressure p: the saturation temperature T\_sat, the densities of liquid and vapour, the latent heat h\_fg, the surface tension sigma, the viscosities, the specific heats, the Prandtl number of the liquid and the vapour conductivity. We take them from a steam table (IAPWS-IF97, computed with the Python package \texttt{iapws}, rounded to 5 figures) at 12 pressures from 0.5 to 20 bar absolute, and between the rows we interpolate the logarithm of each property against ln p (the temperature linearly against ln p). Outside the table the code raises \texttt{ValueError} instead of extrapolating.
+
+\textbf{Nucleate boiling (Rohsenow).} q = mu\_l h\_fg sqrt(g (rho\_l - rho\_v) / sigma) (cp\_l dT / (Csf h\_fg Pr\_l))\textasciicircum{}3. It is still q = C dT\textasciicircum{}3, as in Session 2, but now C comes from the properties and changes with pressure. Csf stands for the surface and liquid together; 0.013 is a typical value for clean water on a metal, and the flux goes as 1 / Csf\textasciicircum{}3, so changing Csf by 50 percent changes the flux by a factor of eight.
+
+\textbf{Critical heat flux (Zuber).} q\_chf = 0.131 h\_fg sqrt(rho\_v) (sigma g (rho\_l - rho\_v))\textasciicircum{}(1/4). The vapour leaves in columns and jets, and the CHF is where the escaping vapour starts to choke the liquid that must come back to the wall. It depends on the fluid and not on the surface, so it does not depend on Csf. With pressure, three factors change and pull in different directions: sqrt(rho\_v) rises a lot (the vapour gets denser, so each cubic metre of leaving vapour carries more energy), while h\_fg and the capillary factor (sigma (rho\_l - rho\_v))\textasciicircum{}(1/4) fall a little.
+
+\textbf{Minimum flux and film boiling (Berenson).} The minimum flux (Leidenfrost point) is q\_min = 0.09 rho\_v h\_fg (g sigma (rho\_l - rho\_v) / (rho\_l + rho\_v)\textasciicircum{}2)\textasciicircum{}(1/4). Film boiling on a horizontal plate is h = 0.425 (k\_v\textasciicircum{}3 rho\_v (rho\_l - rho\_v) g h'\_fg / (mu\_v dT lambda))\textasciicircum{}(1/4) with the Taylor wavelength lambda = 2 pi sqrt(3 sigma / (g (rho\_l - rho\_v))) and h'\_fg = h\_fg + 0.4 cp\_v dT. These are independent correlations and they do not meet, so we define dt\_min as the superheat at which the film-boiling flux falls to q\_min. That makes the curve continuous. Radiation is left out.
+
+\textbf{The whole curve} has the four pieces of Session 3, with every number from the properties: natural convection H dT (H = 1000 W/(m2 K)) until the nucleate flux is larger, nucleate boiling up to the superheat where it reaches the CHF, transition boiling falling straight on a log scale from the CHF to q\_min, and film boiling from dt\_min upwards.
+
+\begin{itemize}[nosep]
+\item p: pressure, absolute (bar)
+\item T\_sat: saturation temperature (C)
+\item dT: wall superheat T\_wall - T\_sat (K)
+\item rho\_l, rho\_v: liquid and vapour density (kg/m3)
+\item h\_fg: latent heat of vaporisation (J/kg)
+\item sigma: surface tension (N/m)
+\item Csf: surface-fluid constant of Rohsenow (0.013) (no unit)
+\item q\_chf, q\_min: critical heat flux, minimum film-boiling flux (W/m2)
+\item dt\_min: superheat at which film boiling carries q\_min (K)
+\end{itemize}
+
+\begin{equation*}
+q_{\mathrm{nb}}=\mu_l h_{fg}\sqrt{\frac{g(\rho_l-\rho_v)}{\sigma}}\left(\frac{c_{p,l}\,\Delta T}{C_{sf}\,h_{fg}\,\mathrm{Pr}_l}\right)^{3}
+\end{equation*}
+
+\begin{equation*}
+q_{\mathrm{chf}}=0.131\,h_{fg}\sqrt{\rho_v}\,\bigl[\sigma g(\rho_l-\rho_v)\bigr]^{1/4}
+\end{equation*}
+
+\begin{equation*}
+q_{\min}=0.09\,\rho_v h_{fg}\left[\frac{g\sigma(\rho_l-\rho_v)}{(\rho_l+\rho_v)^2}\right]^{1/4}
+\end{equation*}
+
+\begin{equation*}
+\frac{q_{\mathrm{chf}}(p)}{q_{\mathrm{chf}}(p_0)}=\sqrt{\frac{\rho_v}{\rho_{v0}}}\cdot\frac{h_{fg}}{h_{fg0}}\cdot\left[\frac{\sigma(\rho_l-\rho_v)}{\sigma_0(\rho_{l0}-\rho_{v0})}\right]^{1/4}
+\end{equation*}
+
+\begin{center}\includegraphics[width=0.85\linewidth]{figures/s04_boiling_curves.png}\\\small Boiling curves from correlations at 1 atm and 5 bar, with the critical heat flux (circle) and the minimum flux (square).\end{center}
+
+\begin{center}\includegraphics[width=0.95\linewidth]{figures/s04_chf_pressure.png}\\\small Left: the critical heat flux against pressure. Right: the superheat for 500 kW/m2 against pressure for three surface constants.\end{center}
+
+\subsection*{E. Worked example}
+A heater surface carries 1300 kW/m2 in saturated water. (a) Find the CHF at 1 atm and at 5 bar by hand from the steam table. (b) Is the heater safe at each pressure? (c) At 5 bar, what are the wall superheat and the wall temperature? Check each against the code.
+\begin{enumerate}[nosep]
+\item At 1 atm the table gives rho\_l = 958.37 kg/m3, rho\_v = 0.59762 kg/m3, h\_fg = 2.2565e6 J/kg and sigma = 0.058917 N/m. sqrt(rho\_v) = 0.7731; sigma g (rho\_l - rho\_v) = 0.058917 x 9.81 x 957.77 = 553.6, whose fourth root is 4.850.
+\item q\_chf(1 atm) = 0.131 x 2.2565e6 x 0.7731 x 4.850 = 1.108e6 W/m2.
+\item At 5 bar: rho\_l = 915.28, rho\_v = 2.6681, h\_fg = 2.1079e6, sigma = 0.048349. sqrt(rho\_v) = 1.6334; sigma g (rho\_l - rho\_v) = 432.9, fourth root 4.561. q\_chf(5 bar) = 0.131 x 2.1079e6 x 1.6334 x 4.561 = 2.057e6 W/m2, which is 1.856 times the 1 atm value.
+\item 1300 kW/m2 is above 1108 kW/m2, so at 1 atm there is no steady nucleate state: the simulation burns the plate out after 18.0 s. At 5 bar it is below 2057 kW/m2, a margin of 1 - 1300 / 2057 = 37 percent, and the same simulation does not burn out.
+\item Rohsenow at 5 bar: C = 427.9 W/(m2 K3), so dT = (1.3e6 / 427.9)\textasciicircum{}(1/3) = 3038\textasciicircum{}(1/3) = 14.5 K and the wall is at 151.8 + 14.5 = 166.3 C. The code (\texttt{steady\_superheat(1.3e6, 5)}) gives 14.48 K, and a 60 s simulation settles at the same value.
+\end{enumerate}
+\textbf{Answer.} The CHF is 1.108 MW/m2 at 1 atm and 2.057 MW/m2 at 5 bar (ratio 1.86). 1300 kW/m2 burns the heater out at 1 atm and is safe at 5 bar, with a 37 percent margin, a wall superheat of 14.5 K and a wall temperature of 166.3 C. By hand and by code agree to the digits shown.
+
+\subsection*{F. Questions}
+\begin{enumerate}[nosep]
+\item \textbf{Conceptual.} The latent heat of water falls as the pressure rises, yet the critical heat flux rises. Explain, using the three factors of Zuber's formula.
+\item \textbf{Numerical.} Compute the CHF at 2 bar by hand from the table row (rho\_l = 942.94, rho\_v = 1.129, h\_fg = 2.2016e6, sigma = 0.054926) and its ratio to the value at 1 atm.
+\item \textbf{Graph and simulation interpretation.} In the second figure, the wall superheat needed for 500 kW/m2 at 1 atm is about 9.4 K for Csf = 0.008, 15.3 K for 0.013 and 23.5 K for 0.02. What does this say about predicting the wall temperature, compared with predicting the CHF?
+\item \textbf{Design and optimisation challenge.} Design: a heater of 0.02 m2 must deliver 24 kW in water with a flux of at most 60 percent of the CHF. Among the pressures 0.5, 1 atm, 2, 5 and 10 bar, which is the lowest that works, and what is the wall temperature? What is the exact lowest pressure?
+\end{enumerate}
+
 \section{Real-world mini-project}
 \textbf{Choose a safe heater power for a boiling surface.} A flat heater of area 0.04 m2 (200 cm2 square) sits in water at 1 atm. The same heater must stay safe whether its surface is new (surface factor 1.0) or fouled (0.6). Safe means: the heat flux is at most 60 percent of the critical heat flux, the steady wall superheat is at most 25 K on both surfaces, and a 20 percent power overshoot does not burn the plate out in the Session 3 simulation. Use \texttt{design\_check} and \texttt{max\_safe\_power} from Session 3. The coefficients are illustrative, so this is an exercise in method, not a real heater specification.
 
+\textbf{The heater of a pressure cooker.} A flat heater of area 0.02 m2 (200 cm2) boils water inside a vessel that can be run at 0.5, 1 atm, 2, 5 or 10 bar. The rule of Session 3 stays: the heat flux is at most 60 percent of the CHF. Find, for each pressure, the allowed flux, the allowed power, the wall superheat and the wall temperature, and show that using the 1 atm flux in the 5 bar vessel wastes capacity while using the 5 bar flux at 1 atm burns the plate out. Use \texttt{design\_row}, \texttt{design\_flux} and \texttt{burnout\_time} from Session 4. The constants are textbook values with large uncertainties, so this is an exercise in method, not a heater specification. \textbf{Deliverable:} A script that prints a table for the five pressures (allowed flux, power on 0.02 m2, T\_sat, wall superheat, wall temperature), checks that the CHF at 5 bar is at least 1.3 times the CHF at 1 atm, runs the burnout test with the 5 bar flux at 1 atm and at 5 bar, and saves a picture of the boiling curves at 1 atm and 5 bar with the design points marked. \textbf{Success looks like:} The allowed flux is 497, 665, 873, 1234 and 1570 kW/m2 at 0.5, 1 atm, 2, 5 and 10 bar (wall temperatures 99.5, 116.8, 135.9, 166.1 and 193.1 C, wall superheats 18.2 down to 13.2 K); the allowed power on 0.02 m2 is 13.3 kW at 1 atm and 24.7 kW at 5 bar; the CHF ratio is 1.86; the 5 bar flux of 1234 kW/m2 burns the plate out at 1 atm after 19.0 s and is safe at 5 bar.
+
 \section{The path ahead}
 \begin{enumerate}[nosep]
-\item \textbf{Session 4: Replace the hand-picked curve with correlations.} A boiling curve computed from fluid properties at any pressure.
 \item \textbf{Session 5: A spherical bubble in the superheated liquid.} A radial diffusion solver for the growing bubble.
 \item \textbf{Session 6: A plate with a temperature profile.} A plate meshed in thickness with boiling as the boundary condition.
 \item \textbf{Session 7: From one bubble to a flux.} A bubble-ensemble model that predicts the nucleate flux.
@@ -239,6 +308,14 @@ Apply a heat flux of 600 kW/m2 to the reference plate. Find the steady wall supe
 \item \textbf{Numerical.} Hint: dT = (q / (C surface))\textasciicircum{}(1/3), with C = 40.74. Solution: Reference: (1.0e6 / 40.74)\textasciicircum{}(1/3) = 29.1 K. Fouled: C = 24.44, dT = (1.0e6 / 24.44)\textasciicircum{}(1/3) = 34.5 K. The critical heat flux is still 1.1 MW/m2 (the peak is now at 35.6 K), so it stays below the peak but the wall runs 5 K hotter and the margin to the peak is thin. Units: kelvin above 100 C, so about 129 C and 135 C.
 \item \textbf{Graph and simulation interpretation.} Hint: Where is the plate sitting on the curve after the jump? Solution: The plate is now on the film-boiling branch and stays there until the flux falls to the order of the film minimum, about 25 kW/m2 (13 kW/m2 in the simulation, which lags because the plate takes time to cool). A 20 percent reduction brings the flux to about 880 kW/m2, about 70 times higher than the return flux, so the plate stays burned out. The operator must remove nearly all of the power, not just back off a little.
 \item \textbf{Design and optimisation challenge.} Hint: Use design\_check(P, 0.04) for P from 14 to 27 kW. Solution: The 60 percent limit alone allows a flux of 660 kW/m2, i.e. 26.4 kW, but at 26 kW the fouled surface runs 29.8 K above boiling, above the 25 K limit. The largest safe power on the grid is 15 kW: a flux of 375 kW/m2 gives 21.0 K (new) and 24.8 K (fouled). 16 kW gives 25.4 K on the fouled surface and fails. A 20 percent overshoot (450 kW/m2) is far below the CHF so it does not burn out. Trade-off: the superheat limit on a fouled surface governs the design, not the CHF. The constants are illustrative, so this is a method, not a specification.
+\end{enumerate}
+
+\subsection*{Session 4}
+\begin{enumerate}[nosep]
+\item \textbf{Conceptual.} Hint: Which of the three properties changes most between 1 atm and 5 bar, and in which direction? Solution: q\_chf is proportional to h\_fg sqrt(rho\_v) (sigma (rho\_l - rho\_v))\textasciicircum{}(1/4). From 1 atm to 5 bar the vapour density rises from 0.598 to 2.668 kg/m3, so sqrt(rho\_v) is 2.11 times larger. The latent heat falls to 0.93 of its value and the capillary factor to 0.94. The product is 2.11 x 0.93 x 0.94 = 1.86. A cubic metre of vapour carries away more energy when it is denser, so the same escaping vapour velocity carries much more heat; the loss in latent heat and surface tension is small by comparison. (Near the critical point, h\_fg and sigma go to zero and the CHF falls again.)
+\item \textbf{Numerical.} Hint: q = 0.131 h\_fg sqrt(rho\_v) (sigma g (rho\_l - rho\_v))\textasciicircum{}(1/4), g = 9.81 m/s2. Solution: 0.131 x 2.2016e6 x sqrt(1.129) = 0.131 x 2.2016e6 x 1.0625 = 3.064e5. sigma g (rho\_l - rho\_v) = 0.054926 x 9.81 x 941.81 = 507.5 and its fourth root is 4.746. So q\_chf = 3.064e5 x 4.746 = 1.454e6 W/m2. At 1 atm it is 1.108e6, so the ratio is 1.312: a pressure of 2 bar already carries 31 percent more heat than 1 atm. Units: W/m2.
+\item \textbf{Graph and simulation interpretation.} Hint: Which of the two depends on the surface constant, and which does not? Solution: The surface constant enters the nucleate flux as 1 / Csf\textasciicircum{}3, so the superheat is proportional to Csf: a range of Csf from 0.008 to 0.02 spreads the wall superheat from 9.4 to 23.5 K at the same flux (a factor of 2.5), so the wall temperature of a real surface is uncertain by several kelvin unless the surface has been measured. The CHF of Zuber's formula does not contain Csf at all, so it is the same 1.108 MW/m2 for all three: it is the more robust number, within the 20 to 30 percent of the correlation, and it is the one a designer uses for a safety margin. The two together say: trust the margin to the CHF, not the exact wall temperature.
+\item \textbf{Design and optimisation challenge.} Hint: 24 kW on 0.02 m2 is a flux of 1200 kW/m2. The CHF must be at least 1200 / 0.6 = 2000 kW/m2. Solution: The allowed power at each pressure is 0.6 q\_chf x 0.02 m2: 9.9 kW at 0.5 bar, 13.3 kW at 1 atm, 17.5 kW at 2 bar, 24.7 kW at 5 bar and 31.4 kW at 10 bar. So 5 bar is the lowest of the five that delivers 24 kW; at 5 bar the flux is 1200 kW/m2, the superheat is 14.1 K and the wall is at 165.9 C. Solving q\_chf(p) = 2000 kW/m2 gives an exact lowest pressure of 4.63 bar, where T\_sat is 149.0 C and the wall is at 163.3 C. The answer rests on the CHF of Zuber with its 20 to 30 percent uncertainty, which the 40 percent margin is meant to cover; it is a method, not a heater specification.
 \end{enumerate}
 
 \section{How to join}

@@ -1,7 +1,7 @@
 [project]
 name = "openboiling"
 version = "0.1.0"
-description = "Learn the boiling curve, bubble growth and the burnout (critical heat flux) of a heated surface in 3 sessions."
+description = "Learn the boiling curve, bubble growth and the burnout (critical heat flux) of a heated surface in 4 sessions."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
